@@ -4,7 +4,7 @@ from .models import *
 
 @admin.register(Participant)
 class ParticipantAdmin(admin.ModelAdmin):
-    pass
+    list_display = ["name", "number"]
 
 @admin.register(Exclusions)
 class ExclusionsAdmin(admin.ModelAdmin):
@@ -12,12 +12,12 @@ class ExclusionsAdmin(admin.ModelAdmin):
 
 @admin.register(WishList)
 class WishListAdmin(admin.ModelAdmin):
-    pass
+    list_display = ["participant", "year", "is_complete", "content"]
 
 @admin.register(DrawnName)
 class DrawnNameAdmin(admin.ModelAdmin):
-    pass
+    list_display = ["year", "participant", "intro_sent", "drawn_sent", "recipient_wishlist_sent"]
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    pass
+    list_display = ["processed_datetime", "participant", "from_number", "to_number", "body"]

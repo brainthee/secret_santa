@@ -20,6 +20,8 @@ class Participant(models.Model):
 class WishList(models.Model):
     participant = models.ForeignKey(Participant, related_name="wishlist", on_delete=models.CASCADE)
     year = models.IntegerField()
+    content = models.TextField(blank=True, null=True)
+    is_complete = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('participant', 'year',)
@@ -41,6 +43,17 @@ class DrawnName(models.Model):
     participant = models.ForeignKey(Participant, related_name="draws", on_delete=models.CASCADE)
     recipient = models.ForeignKey(Participant, related_name="givers", on_delete=models.CASCADE)
 
+    intro_sent = models.BooleanField(default=False)
+    drawn_sent = models.BooleanField(default=False)
+    recipient_wishlist_sent = models.BooleanField(default=False)
+
+    def __str__(self) -> str:
+        return "{}: {} -> {}".format(
+            self.year,
+            self.participant,
+            self.recipient
+        )
+
     class Meta:
         unique_together = ('year', 'participant',)
         
@@ -53,6 +66,14 @@ class Message(models.Model):
     is_received = models.BooleanField("Is Received", default=True)
     body = models.TextField()
     smssid = models.CharField("MessageSID", max_length=200)
+
+    def __str__(self) -> str:
+        return "{}: {} -> {}: {}".format(
+            str(self.processed_datetime),
+            self.from_number,
+            self.to_number,
+            self.body,
+        )
 
     class Meta:
         # unique_together = ('participant', 'year',)
