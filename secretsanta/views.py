@@ -31,7 +31,7 @@ def sms_response(request):
         return HttpResponse("WHORU")
 
     # Legit user...
-    current_wishlist,_ = WishList.objects.get_or_create(
+    current_wishlist, _ = WishList.objects.get_or_create(
         participant=part, year=current_year
     )
     if current_wishlist.is_complete:
@@ -71,13 +71,15 @@ def sms_response(request):
             current_wishlist.save()
         else:
             if current_wishlist.content:
-                current_wishlist.content = str(current_wishlist.content) + "\n" + msg.body
+                current_wishlist.content = (
+                    str(current_wishlist.content) + "\n" + msg.body
+                )
             else:
                 current_wishlist.content = msg.body
             current_wishlist.save()
             send_sms(
                 participant=part,
-                content="Got it. Is that everything? (Please reply \"yes\" or tell me more)".format(
+                content='Got it. Is that everything? (Please reply "yes" or tell me more)'.format(
                     part.name,
                 ),
             )
@@ -89,6 +91,9 @@ def sms_response(request):
 def clear(request):
     DrawnName.objects.all().delete()
     WishList.objects.all().delete()
+    Message.objects.all().delete()
+    return HttpResponse("OK")
+
 
 ## MAKE CRON JOB HITTING /DRAW EVERY 10 MINUTES
 
@@ -99,14 +104,14 @@ def draw_year(request):
     # WishList.objects.all().delete()
     current_year = timezone.datetime.now().year
     for part in Participant.objects.all():
-        current_wishlist,_ = WishList.objects.get_or_create(
+        current_wishlist, _ = WishList.objects.get_or_create(
             participant=part, year=current_year
         )
 
         if DrawnName.objects.filter(year=current_year, participant=part).exists():
             # Already drawn - see if we need to do any bits
             draw = DrawnName.objects.get(year=current_year, participant=part)
-            r_wishlist,_ = WishList.objects.get_or_create(
+            r_wishlist, _ = WishList.objects.get_or_create(
                 participant=draw.recipient, year=current_year
             )
 
@@ -158,7 +163,10 @@ def draw_year(request):
                     current_wishlist.reminder_sent = timezone.datetime.now()
                     current_wishlist.save()
 
-                elif current_wishlist.reminder_sent < timezone.datetime.now() - timedelta(days=3):
+                elif (
+                    current_wishlist.reminder_sent
+                    < timezone.datetime.now() - timedelta(days=3)
+                ):
                     # Been over a day since last reminder
                     send_sms(
                         participant=part,
@@ -170,7 +178,7 @@ def draw_year(request):
                 else:
                     # Been less than a day since we last asked. Get off their back.
                     pass
-            
+
             elif r_wishlist.is_complete and not draw.recipient_wishlist_sent:
                 send_sms(
                     participant=draw.participant,
