@@ -4,14 +4,16 @@ from pprint import pprint
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.admin.views.decorators import staff_member_required
-from datetime import datetime
+from datetime import timedelta
+from django.utils import timezone
 from .models import *
+import time
 from .utils import send_sms
 
 
 @csrf_exempt
 def sms_response(request):
-    current_year = datetime.now().year
+    current_year = timezone.datetime.now().year
     part = None
     if Participant.objects.filter(number=request.POST.get("From", "")).exists():
         part = Participant.objects.filter(number=request.POST.get("From", "")).first()
@@ -52,7 +54,7 @@ def sms_response(request):
 
         send_sms(
             participant=part,
-            content="Hmm, sorry {}! As a small but special elf, I'm not sure I understood your message. I've got your wishlist and you should know who your person is.".format(
+            content="Hmm, sorry {}! As a small but special elf, I'm not sure I understood your message. I've got your wishlist and you should know who your recipient is.".format(
                 part.name,
             ),
         )
@@ -60,16 +62,13 @@ def sms_response(request):
         if msg.body.lower() == "yes":
             send_sms(
                 participant=part,
-                content="Amazing! I've got: \"{}\". I'll let your secret santa know :)".format(
+                content="Amazing! I've got: \"{}\". I'll pass that on to your Secret Santa 🎄 :)".format(
                     current_wishlist.content,
                     part.name,
                 ),
             )
             current_wishlist.is_complete = True
             current_wishlist.save()
-            draw = DrawnName.objects.get(year=current_year, recipient=part)
-            draw.recipient_wishlist_sent = False
-            draw.save()
         else:
             if current_wishlist.content:
                 current_wishlist.content = str(current_wishlist.content) + "\n" + msg.body
@@ -78,7 +77,7 @@ def sms_response(request):
             current_wishlist.save()
             send_sms(
                 participant=part,
-                content="Got it. Is that everything? (Please say yes or just add more!)".format(
+                content="Got it. Is that everything? (Please reply \"yes\" or tell me more)".format(
                     part.name,
                 ),
             )
@@ -91,12 +90,14 @@ def clear(request):
     DrawnName.objects.all().delete()
     WishList.objects.all().delete()
 
+## MAKE CRON JOB HITTING /DRAW EVERY 10 MINUTES
+
 
 @staff_member_required
 def draw_year(request):
     # DrawnName.objects.all().delete()
     # WishList.objects.all().delete()
-    current_year = datetime.now().year
+    current_year = timezone.datetime.now().year
     for part in Participant.objects.all():
         current_wishlist,_ = WishList.objects.get_or_create(
             participant=part, year=current_year
@@ -105,58 +106,80 @@ def draw_year(request):
         if DrawnName.objects.filter(year=current_year, participant=part).exists():
             # Already drawn - see if we need to do any bits
             draw = DrawnName.objects.get(year=current_year, participant=part)
+            r_wishlist,_ = WishList.objects.get_or_create(
+                participant=draw.recipient, year=current_year
+            )
+
             if not draw.intro_sent:
                 # Send intro text!
-                print("Sending intro text to {}".format(part))
                 send_sms(
                     participant=part,
-                    content="Hey {name}! I'm Snowflake, the Secret Santa Helper. You've been invited to join in our Secret Santa group. Get ready for more info!".format(
-                        name=part.name
+                    content="Hey {name}! I'm Snowflake ❄, your family's {current_year} Secret Santa Helper. You'll be selected one person to gift on {draw_date}, your budget will be £{budget}. Watch this space! 🎄".format(
+                        name=part.name,
+                        current_year=current_year,
+                        draw_date=settings.DRAW_DATE,
+                        budget=settings.DRAW_BUDGET,
                     ),
                 )
-                if not current_wishlist.is_complete:
-                    send_sms(
-                        participant=part,
-                        content="It's almost time to meet your Secret Santa recipient! But first, we need your wish list! Please share 3 things you'd love to receive (no prices or hints, just fun surprises!). Please keep it to a single message.",
-                    )
                 draw.intro_sent = True
 
-            elif not draw.drawn_sent:
-                if current_wishlist.is_complete:
-                    # Send draw info
-                    print("Sending drawn text to {}".format(part))
-                    send_sms(
-                        participant=part,
-                        content="Meet your Secret Santa recipient... It's {}! I'll send you their wishlist in a moment. Keep it a secret and get ready to surprise them on {}. Remember, the budget is no more than £{}".format(
-                            draw.recipient.name,
-                            settings.DRAW_DATE,
-                            settings.DRAW_BUDGET,
-                        ),
-                    )
-                    draw.drawn_sent = True
-                else:
-                    # Remind person to complete their wishlist
-                    print("Sending wishlist reminder text to {}".format(part))
-                    send_sms(
-                        participant=part,
-                        content="Hey {}, don't forget to share your Secret Santa wish list! We need 3 things you'd love to receive. Your recipient is counting on it... and so are our North Pole elves".format(
-                            draw.participant.name,
-                        ),
-                    )
+            elif not draw.drawn_1_sent:
+                # Send draw info
+                send_sms(
+                    participant=part,
+                    content="🥁🥁 Drum roll 🥁🥁 You have been selected...",
+                )
+                draw.drawn_1_sent = True
+            elif not draw.drawn_2_sent:
+                send_sms(
+                    participant=part,
+                    content="🎁 {} 🎁".format(
+                        draw.recipient.name.upper(),
+                    ),
+                )
+                draw.drawn_2_sent = True
+            elif not draw.drawn_3_sent:
+                send_sms(
+                    participant=part,
+                    content="I'll send you their wishlist once I have it. Remember, no telling! Get ready to surprise them on {}. Your budget is £{}. Love and sparkles - Snowflake the Elf ✨🎄✨".format(
+                        settings.DRAW_DATE,
+                        settings.DRAW_BUDGET,
+                    ),
+                )
+                draw.drawn_3_sent = True
 
-            elif not draw.recipient_wishlist_sent:
-                # Send recip's wishlist...
-                r_wishlist = WishList.objects.get(year=current_year, participant=draw.recipient)
-                if r_wishlist.is_complete:
-                    print("Sending recip's wishlist text to {}".format(part))
+            elif not current_wishlist.is_complete:
+                if not current_wishlist.reminder_sent:
+                    # No reminder sent
                     send_sms(
                         participant=part,
-                        content="Here's {}'s wishlist! \"{}\"".format(
-                            draw.recipient.name,
-                            r_wishlist.content,
-                        ),
+                        content="Please tell me a wishlist of three things YOU would love to receive this Christmas and I'll pass it along to your Secret Santa 🎅",
                     )
-                    draw.recipient_wishlist_sent = True
+                    current_wishlist.reminder_sent = timezone.datetime.now()
+                    current_wishlist.save()
+
+                elif current_wishlist.reminder_sent < timezone.datetime.now() - timedelta(days=3):
+                    # Been over a day since last reminder
+                    send_sms(
+                        participant=part,
+                        content="Hello! It's Snowflake - remember to send me your wishlist, so that your Secret Santa can get wrapping 🎁🎁",
+                    )
+                    current_wishlist.reminder_sent = timezone.datetime.now()
+                    current_wishlist.save()
+
+                else:
+                    # Been less than a day since we last asked. Get off their back.
+                    pass
+            
+            elif r_wishlist.is_complete and not draw.recipient_wishlist_sent:
+                send_sms(
+                    participant=draw.participant,
+                    content="Here is {}'s wishlist:\r \r{}\r \rHappy shopping and Merry Christmas 🎅✨🎄".format(
+                        draw.recipient.name,
+                        r_wishlist.content,
+                    ),
+                )
+                draw.recipient_wishlist_sent = True
 
             draw.save()
 

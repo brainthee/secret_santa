@@ -16,7 +16,15 @@ class WishListAdmin(admin.ModelAdmin):
 
 @admin.register(DrawnName)
 class DrawnNameAdmin(admin.ModelAdmin):
-    list_display = ["year", "participant", "intro_sent", "drawn_sent", "recipient_wishlist_sent"]
+    list_display = [
+        "year", 
+        "participant", 
+        "intro_sent", 
+        "drawn_1_sent", 
+        "drawn_2_sent", 
+        "drawn_3_sent", 
+        "recipient_wishlist_sent"
+        ]
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):

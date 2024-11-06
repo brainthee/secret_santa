@@ -21,6 +21,7 @@ class WishList(models.Model):
     participant = models.ForeignKey(Participant, related_name="wishlist", on_delete=models.CASCADE)
     year = models.IntegerField()
     content = models.TextField(blank=True, null=True)
+    reminder_sent = models.DateTimeField(blank=True, null=True)
     is_complete = models.BooleanField(default=False)
 
     class Meta:
@@ -44,7 +45,9 @@ class DrawnName(models.Model):
     recipient = models.ForeignKey(Participant, related_name="givers", on_delete=models.CASCADE)
 
     intro_sent = models.BooleanField(default=False)
-    drawn_sent = models.BooleanField(default=False)
+    drawn_1_sent = models.BooleanField(default=False)
+    drawn_2_sent = models.BooleanField(default=False)
+    drawn_3_sent = models.BooleanField(default=False)
     recipient_wishlist_sent = models.BooleanField(default=False)
 
     def __str__(self) -> str:

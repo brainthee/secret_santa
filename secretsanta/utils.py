@@ -1,7 +1,6 @@
 import os
 from twilio.rest import Client
 from django.conf import settings
-from pprint import pprint
 from .models import *
 
 
@@ -19,5 +18,11 @@ def send_sms(
         to="+{}".format(participant.number),
         body=content,
     )
-    pprint(message)
+
+    msg = Message.objects.create(
+        from_number=settings.TWILIO_SENDER,
+        to_number=participant.number,
+        participant=participant,
+        body=content,
+    )
     return message

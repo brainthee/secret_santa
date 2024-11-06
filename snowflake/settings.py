@@ -38,7 +38,7 @@ TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
 
 DRAW_BUDGET = 30
-DRAW_DATE = "23th Dec"
+DRAW_DATE = "Christmas Day"
 
 # Application definition
 
@@ -122,7 +122,7 @@ TIME_ZONE = "UTC"
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
