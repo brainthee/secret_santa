@@ -63,6 +63,8 @@ COPY nginx.conf /etc/nginx/sites-available/default
 COPY ./entrypoint.sh .
 RUN chmod +x /app/entrypoint.sh
 
+RUN mkdir /app/data
+
 # copy project
 COPY --chown=user:user . .
 
