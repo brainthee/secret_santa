@@ -26,7 +26,6 @@ RUN apt-get upgrade -y
 RUN apt-get install -y build-essential git procps gcc sudo cron
 RUN apt-get install -y python3 python3-dev python3-setuptools
 RUN apt-get install -y python3-pip python3-virtualenv
-RUN apt-get install -y default-libmysqlclient-dev pkg-config libpq-dev mariadb-client
 RUN apt-get install -y nginx supervisor
 
 # Cleanup
@@ -36,32 +35,36 @@ RUN apt-get clean
 # Stop some services
 RUN service supervisor stop
 RUN service cron stop
+RUN service nginx stop
 
 # Setup user
-RUN groupadd -g "${GID}" chaotica
-RUN useradd --create-home --no-log-init -u "${UID}" -g "${GID}" chaotica
-RUN chown chaotica:chaotica -R /app
+RUN groupadd -g "${GID}" user
+RUN useradd --create-home --no-log-init -u "${UID}" -g "${GID}" user
+RUN chown user:user -R /app
 
 # install dependencies
 
-COPY --chown=chaotica:chaotica requirements*.txt ./
+COPY --chown=user:user requirements*.txt ./
 
 RUN pip3 install --upgrade pip
 RUN pip3 install -r requirements.txt
 RUN pip3 install git+https://github.com/coderanger/supervisor-stdout.git
 
 # Setup CRON
-COPY ./crontab.txt /crontab.txt
+# COPY ./crontab.txt /crontab.txt
 
 # Copy supervisor conf
 COPY ./supervisord.conf /etc/
+
+# Copy nginx
+COPY nginx.conf /etc/nginx/sites-available/default
 
 # copy entrypoint.sh
 COPY ./entrypoint.sh .
 RUN chmod +x /app/entrypoint.sh
 
 # copy project
-COPY --chown=chaotica:chaotica . .
+COPY --chown=user:user . .
 
 # run entrypoint.sh
 ENTRYPOINT ["/app/entrypoint.sh"]
